@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Apple Notes Generator</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f2f2f7;
+        }
+
+        #capture-frame {
+            width: 1080px;
+            height: 1350px;
+            background-color: #ffffff;
+            flex-shrink: 0;
+            position: relative;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.12);
+            transform-origin: top left;
+        }
+
+        .apple-yellow { color: #eeb240; }
+        .apple-gray { color: #8e8e93; }
+
+        .ios-input {
+            width: 100%;
+            background: #f2f2f7;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 16px;
+            color: #1c1c1e;
+            transition: all 0.2s ease;
+        }
+        .ios-input:focus {
+            background: #e5e5ea;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(238, 178, 64, 0.4);
+        }
+
+        .ios-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #8e8e93;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 0.5px solid rgba(0,0,0,0.1);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            cursor: pointer;
+            margin-top: -8px; 
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e5e5ea;
+            border-radius: 2px;
+        }
+
+        [contenteditable]:empty:before {
+            content: attr(placeholder);
+            color: #d1d1d6;
+            pointer-events: none;
+            display: block;
+        }
+
+        .loader {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="h-screen flex flex-col-reverse lg:flex-row overflow-hidden text-[#1c1c1e]">
+
+    <div class="w-full lg:w-[360px] bg-white z-20 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] lg:shadow-[4px_0_24px_rgba(0,0,0,0.04)] flex flex-col h-[40vh] lg:h-full border-t lg:border-t-0 lg:border-r border-gray-200 rounded-t-3xl lg:rounded-none transition-all duration-300">
+        
+        <div class="px-8 pt-6 pb-2 lg:p-8 lg:pb-4 flex-shrink-0">
+            <h1 class="text-lg lg:text-2xl font-bold tracking-tight flex items-center gap-3">
+                <div class="w-6 h-6 lg:w-8 lg:h-8 rounded-lg bg-[#eeb240] flex items-center justify-center text-white">
+                    <i data-lucide="edit-3" class="w-4 h-4 lg:w-5 lg:h-5"></i>
+                </div>
+                Note Editor
+            </h1>
+        </div>
+
+        <div class="flex-grow overflow-y-auto px-8 pb-8 space-y-8">
+            
+            <div class="space-y-4 pt-2">
+                <div>
+                    <label class="ios-label">Folder Title</label>
+                    <input type="text" id="headerInput" value="My Quotes" class="ios-input" placeholder="Top left text">
+                </div>
+                <div>
+                    <label class="ios-label">Date</label>
+                    <input type="text" id="dateInput" class="ios-input" placeholder="Custom date string">
+                </div>
+            </div>
+
+            <div class="h-px bg-gray-100"></div>
+
+            <div class="space-y-6">
+                <h3 class="text-sm font-semibold text-gray-900">Typography</h3>
+
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label class="text-xs text-gray-500">Font Size</label>
+                        <span id="fontSizeVal" class="text-xs font-mono text-gray-400">40px</span>
+                    </div>
+                    <input type="range" id="fontSizeInput" min="20" max="120" value="40">
+                </div>
+
+                <div>
+                    <label class="text-xs text-gray-500 block mb-2">Line Spacing</label>
+                    <div class="flex items-center">
+                        <input type="number" id="lineHeightInput" step="0.05" value="1.4" class="ios-input !p-2 !text-sm text-center font-mono">
+                    </div>
+                </div>
+
+                <div>
+                     <div class="flex justify-between mb-2">
+                        <label class="text-xs text-gray-500">Weight</label>
+                        <span id="fontWeightVal" class="text-xs font-mono text-gray-400">400</span>
+                    </div>
+                    <input type="range" id="fontWeightInput" min="100" max="900" step="100" value="400">
+                </div>
+            </div>
+            
+            <div class="h-16 lg:hidden"></div>
+        </div>
+
+        <div class="p-4 lg:p-6 border-t border-gray-100 bg-white flex-shrink-0">
+            <button id="downloadBtn" class="w-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white font-medium py-3 lg:py-3.5 px-6 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-gray-200">
+                <span class="loader" id="btnLoader"></span>
+                <span id="btnText">Download Image</span>
+                <i data-lucide="arrow-down-to-line" class="w-4 h-4 opacity-80"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-grow bg-[#f2f2f7] relative overflow-hidden flex flex-col items-center justify-center p-4 lg:p-0 min-h-0">
+        
+        <div id="scale-wrapper" class="relative bg-white shadow-2xl transition-transform duration-200 ease-out origin-top lg:origin-center">
+            <div id="capture-frame" class="relative flex flex-col bg-white overflow-hidden cursor-text">
+                
+                <div class="absolute top-0 left-0 w-full px-12 pt-12 pb-4 flex justify-between items-center z-10 bg-white pointer-events-none">
+                    <div class="flex items-center gap-1 h-14 min-w-0 mr-4">
+                        <i data-lucide="chevron-left" class="w-12 h-12 apple-yellow stroke-[2.5] -ml-2 flex-shrink-0 mt-2.5"></i>
+                        <span id="displayHeader" class="text-[42px] font-medium apple-yellow leading-none whitespace-nowrap pt-0">My Quotes</span>
+                    </div>
+
+                    <div class="flex items-center gap-6 h-14 flex-shrink-0">
+                        <div class="h-12 w-12 flex items-center justify-center">
+                            <i data-lucide="share" class="w-8 h-8 apple-yellow stroke-[2]"></i>
+                        </div>
+                        <div class="h-12 w-12 flex items-center justify-center">
+                            <div class="w-8 h-8 rounded-full border-2 border-[#eeb240] flex items-center justify-center">
+                                <i data-lucide="more-horizontal" class="w-5 h-5 apple-yellow stroke-[3]"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-grow w-full px-14 pt-32 pb-12 flex flex-col relative z-0">
+                    <div class="text-center mb-10 pointer-events-none">
+                        <span id="displayDate" class="text-[32px] apple-gray font-normal"></span>
+                    </div>
+
+                    <div 
+                        id="displayContent" 
+                        contenteditable="true" 
+                        spellcheck="false"
+                        placeholder="Type your thoughts here..."
+                        class="text-black whitespace-pre-wrap flex-grow outline-none focus:outline-none min-h-[500px]"
+                    >Revive your aspirations and reignite your passion by dusting off your old plans.
+
+Unleash your full potential and let nothing stop you from making your wildest dreams a reality.
+
+Today marks the beginning of something great, take the first step towards it.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-6 right-6 flex items-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 bg-white/60 backdrop-blur-md rounded-full border border-white/20 shadow-sm text-[10px] lg:text-xs font-medium text-gray-500 z-10 hidden lg:flex">
+             <span>Made with ❤️ by</span>
+             <a href="https://x.com/heyaharshu" target="_blank" class="text-gray-900 hover:text-[#eeb240] transition-colors no-underline font-bold">Harsh</a>
+        </div>
+
+        <div id="zoom-hint" class="absolute top-4 right-4 bg-black/5 text-black/40 px-3 py-1 rounded-full text-[10px] font-mono pointer-events-none hidden lg:block">
+            100% Fit
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const headerInput = document.getElementById('headerInput');
+        const dateInput = document.getElementById('dateInput');
+        
+        const fontSizeInput = document.getElementById('fontSizeInput');
+        const lineHeightInput = document.getElementById('lineHeightInput');
+        const fontWeightInput = document.getElementById('fontWeightInput');
+        
+        const fontSizeVal = document.getElementById('fontSizeVal');
+        const fontWeightVal = document.getElementById('fontWeightVal');
+
+        const displayHeader = document.getElementById('displayHeader');
+        const displayDate = document.getElementById('displayDate');
+        const displayContent = document.getElementById('displayContent');
+        
+        const scaleWrapper = document.getElementById('scale-wrapper');
+        const captureFrame = document.getElementById('capture-frame');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const btnLoader = document.getElementById('btnLoader');
+        const btnText = document.getElementById('btnText');
+        const zoomHint = document.getElementById('zoom-hint');
+
+        function formatDate() {
+            const now = new Date();
+            const options = { month: 'long', day: 'numeric', year: 'numeric' };
+            const dateStr = now.toLocaleDateString('en-US', options);
+            
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0'+minutes : minutes;
+            
+            return `${dateStr} at ${hours}:${minutes} ${ampm}`;
+        }
+        
+        dateInput.value = formatDate();
+
+        function updateUI() {
+            displayHeader.textContent = headerInput.value || "My Quotes";
+            displayDate.textContent = dateInput.value;
+            fontSizeVal.textContent = `${fontSizeInput.value}px`;
+            
+            const weights = {
+                '100': 'Thin', '200': 'Ex-Light', '300': 'Light', '400': 'Regular',
+                '500': 'Medium', '600': 'SemiBold', '700': 'Bold', '800': 'Ex-Bold', '900': 'Black'
+            };
+            fontWeightVal.textContent = `${fontWeightInput.value} (${weights[fontWeightInput.value] || ''})`;
+
+            displayContent.style.fontSize = `${fontSizeInput.value}px`;
+            displayContent.style.lineHeight = lineHeightInput.value;
+            displayContent.style.fontWeight = fontWeightInput.value;
+        }
+
+        function fitPreview() {
+            const container = scaleWrapper.parentElement;
+            
+            const isMobile = window.innerWidth < 1024;
+            const paddingX = isMobile ? 32 : 80;
+            const paddingY = isMobile ? 32 : 80;
+            
+            const containerWidth = container.offsetWidth - paddingX;
+            const containerHeight = container.offsetHeight - paddingY;
+            
+            const scaleX = containerWidth / 1080;
+            const scaleY = containerHeight / 1350;
+            
+            const scale = Math.min(scaleX, scaleY, isMobile ? 0.9 : 0.85); 
+            
+            scaleWrapper.style.width = '1080px';
+            scaleWrapper.style.height = '1350px';
+            scaleWrapper.style.transform = `scale(${scale})`;
+            
+            if (isMobile) {
+                scaleWrapper.style.transformOrigin = 'center center';
+            } else {
+                scaleWrapper.style.transformOrigin = 'center center';
+            }
+            
+            if(zoomHint) zoomHint.textContent = `${Math.round(scale * 100)}% Fit`;
+        }
+
+        headerInput.addEventListener('input', updateUI);
+        dateInput.addEventListener('input', updateUI);
+        
+        fontSizeInput.addEventListener('input', updateUI);
+        lineHeightInput.addEventListener('input', updateUI);
+        fontWeightInput.addEventListener('input', updateUI);
+
+        captureFrame.addEventListener('click', (e) => {
+            if (e.target === captureFrame || e.target.closest('.flex-grow')) {
+                displayContent.focus();
+            }
+        });
+
+        window.addEventListener('resize', fitPreview);
+
+        downloadBtn.addEventListener('click', async () => {
+            btnText.textContent = "Processing...";
+            btnLoader.style.display = "inline-block";
+            downloadBtn.disabled = true;
+
+            try {
+                window.scrollTo(0, 0);
+
+                const original = document.getElementById('capture-frame');
+                const clone = original.cloneNode(true);
+                clone.id = "capture-frame-clone";
+
+                const cloneContent = clone.querySelector('#displayContent');
+                if(cloneContent) {
+                    cloneContent.removeAttribute('contenteditable');
+                }
+
+                const container = document.createElement('div');
+                Object.assign(container.style, {
+                    position: 'fixed',
+                    top: '0',
+                    left: '0',
+                    width: '1080px',
+                    height: '1350px',
+                    zIndex: '-9999',
+                    overflow: 'hidden',
+                    background: '#ffffff'
+                });
+                
+                Object.assign(clone.style, {
+                    position: 'relative',
+                    top: '0',
+                    left: '0',
+                    width: '1080px',
+                    height: '1350px',
+                    transform: 'none',
+                    margin: '0',
+                    pointerEvents: 'none',
+                    opacity: '1'
+                });
+
+                container.appendChild(clone);
+                document.body.appendChild(container);
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const canvas = await html2canvas(clone, {
+                    scale: 1, 
+                    useCORS: true,
+                    backgroundColor: "#ffffff",
+                    width: 1080,
+                    height: 1350,
+                    x: 0,
+                    y: 0,
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: 1920,
+                    windowHeight: 1920,
+                    logging: false
+                });
+
+                const link = document.createElement('a');
+                link.download = `apple-note-${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                document.body.removeChild(container);
+
+            } catch (err) {
+                console.error("Capture failed:", err);
+                alert("Error generating image.");
+            } finally {
+                btnText.textContent = "Download Image";
+                btnLoader.style.display = "none";
+                downloadBtn.disabled = false;
+            }
+        });
+
+        updateUI();
+        fitPreview();
+
+    </script>
+</body>
+</html>
